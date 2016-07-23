@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="../../bower_components/polymer/polymer.html" rel="import">
+    <link href="../../bower_components/iron-icons/iron-icons.html" rel="import">
+    <link href="../../bower_components/iron-pages/iron-pages.html" rel="import">
+    <link href="../../bower_components/paper-input/paper-input.html" rel="import">
+    <link href="../../bower_components/paper-menu/paper-menu.html" rel="import">
+    <link href="../../bower_components/paper-icon-button/paper-icon-button.html" rel="import">
+    <link href="../../bower_components/paper-material/paper-material.html" rel="import">
+    <link href="../../bower_components/paper-header-panel/paper-header-panel.html" rel="import">
+    <link href="../../bower_components/paper-button/paper-button.html" rel="import">
+    <link href="../../bower_components/paper-item/paper-item.html" rel="import">
+    <link href="../../bower_components/paper-fab/paper-fab.html" rel="import">
+    <link href="../../bower_components/paper-tabs/paper-tabs.html" rel="import">
+    <link href="../../bower_components/paper-toolbar/paper-toolbar.html" rel="import">
+    <link href="../../bower_components/paper-icon-button/paper-icon-button.html" rel="import">
+    <link href="../../bower_components/iron-icons/iron-icons.html" rel="import">
+    <link href="../../bower_components/iron-icon/iron-icon.html" rel="import">
+</head>
+<body>
+
+<dom-module id="todo-app">
+    <style></style>
+    <template>
+
+        <paper-header-panel>
+            <paper-toolbar>
+                <paper-icon-button icon="menu" on-click="showMenu"></paper-icon-button>
+                <paper-item>Singularity 2-Do List</paper-item>
+            </paper-toolbar>
+        </paper-header-panel>
+
+        <iron-pages attr-for-selected="data-route" selected="{{route}}">
+
+            <!-- menu panel -->
+            <section data-route="menu">
+                <paper-material elevation="1">
+                    <template is="dom-if" if="{{anonymous}}">
+                      <paper-item on-tap="showAbout">About</paper-item>
+                      <paper-item on-tap="showLogin">Login</paper-item>
+                    </template>
+                    <template is="dom-if" if="{{!anonymous}}">
+                        <paper-item on-tap="showMyDetail">{{user.firstName}} {{user.lastName}}</paper-item>
+                        <paper-item on-tap="showAbout">About</paper-item>
+                        <paper-item on-tap="showTodos">Lists</paper-item>
+                        <paper-item on-tap="doLogout">Logout</paper-item>
+                    </template>
+                </paper-material>
+            </section>
+
+            <!-- todo list panel -->
+            <section data-route="todos">
+                <p>this should show the todo list....</p>
+            </section>
+
+            <!-- login panel -->
+            <section data-route="login">
+                <paper-input label="Email" value="{{email}}"></paper-input>
+                <paper-input label="Password" value="{{password}}"></paper-input>
+                <paper-button raised on-click="login">Login</paper-button>
+                <paper-button on-click="resetLogin">Reset</paper-button>
+            </section>
+
+            <!-- about panel -->
+            <section data-route="about">
+            <paper-material elevation="2">
+                <h3>Singularity 2-Do List</h3>
+                <p>COP4656 Mobile Programming, Summer 2016</p>
+                <ul>
+                    <li>Brian Posey</li>
+                    <li>Carrie</li>
+                    <li>David</li>
+                    <li>Erik</li>
+                </ul>
+                <paper-button raised on-tap="cancelAbout">OK</paper-button>
+            </paper-material>
+          </section>
+
+        </iron-pages>
+
+    </template>
+    <script>
+        Polymer({
+            is: 'todo-app',
+            properties: {
+                anonymous: {
+                    type: Boolean,
+                    value: true
+                },
+                baseUrl: {
+                    type: String,
+                    value: 'https://xspfync7pf.execute-api.us-east-1.amazonaws.com/prod/'
+                },
+                authentication: {
+                    type: String,
+                    value: ''
+                },
+                email: {
+                    type: String,
+                    value: 'gw@whitehouse.gov'
+                },
+                password: {
+                    type: String,
+                    value: 'hunter2'
+                },
+                route: {
+                    type: String,
+                    value: 'login'
+                },
+                user: {
+                    type: Object
+                },
+                todos: {
+                    type: Array,
+                    value: []
+                }
+            },
+            ready: function(e) {
+                //this.addEventListener('LoginSuccess', this.postLoginSetup);
+            },
+            postLoginSetup: function(e) {
+                console.log('Post login setup started.');
+                this.anonymous = false;
+                this.user = e.message;
+                this.todos = [
+                  {'name': 'One'},
+                  {'name': 'Two'},
+                  {'name': 'Three'}
+                ];
+                this.showTop();
+            },
+            showTop: function() {
+                if (this.anonymous) {
+                  this.route = 'login'
+                } else {
+                  this.route = 'todos'
+                }
+            },
+            showTodos: function() {
+                this.route = 'todos'
+            },
+            doLogout: function(e) {
+                this.sessionId = '';
+                this.anonymous = true;
+                this.admin = false;
+                this.user = {};
+                this.showTop();
+            },
+            showLogin: function() {
+                this.route = 'login';
+            },
+            showMenu: function() {
+                if (this.route == 'menu') {
+                    this.route = this.returnToRoute;
+                } else {
+                    this.returnToRoute = this.route;
+                    this.route = 'menu';
+                }
+            },
+            showAbout: function(e) {
+                this.route = 'about';
+            },
+            cancelAbout: function(e) {
+                this.showTop();
+            },
+            login: function(e) {
+                // prepare the request payload
+                var body = {
+                    'email': this.email,
+                    'password': this.password
+                };
+                json = JSON.stringify(body);
+                console.log('login: request: ' + json);
+
+                // make the call to the backend
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', this.baseUrl + 'login');
+                xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                xhr.onerror = function(e) {
+                    console.log('login: error: ' + e.message);
+                }.bind(this);
+                xhr.onload = function(e) {
+                    console.log('login: success: ' + xhr.responseText);
+                    data = JSON.parse(xhr.responseText);
+                    this.user = data['Items'][0];
+                    this.anonymous = false;
+                    this.authentication = this.user.self;
+                    this.showTop();
+                }.bind(this);
+                xhr.send(json);
+            },
+            resetLogin: function() {
+                this.email = '';
+                this.password = '';
+            }
+        });
+    </script>
+</dom-module>
+
+</body>
+</html>

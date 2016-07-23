@@ -1,0 +1,25 @@
+{
+  "name": "cop resapp",
+  "authors": [
+    "Brian Posey <brian.posey@boggycreek.com>"
+  ],
+  "description": "Web client for team Singularity's 2-Do group project.",
+  "main": "index.html",
+  "license": "MIT",
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.0.0",
+    "paper-elements": "polymerelements/paper-elements#^1.0.7",
+    "iron-elements": "polymerelements/iron-elements#^1.0.10",
+    "carbon-route": "PolymerElements/carbon-route#^0.8.4",
+    "iron-ajax": "^1.4.0"
+  }
+}
