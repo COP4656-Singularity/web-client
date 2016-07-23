@@ -43,7 +43,7 @@
                     <template is="dom-if" if="{{!anonymous}}">
                         <paper-item on-tap="showMyDetail">{{user.firstName}} {{user.lastName}}</paper-item>
                         <paper-item on-tap="showAbout">About</paper-item>
-                        <paper-item on-tap="showTodos">Lists</paper-item>
+                        <paper-item on-tap="showTodos">Refresh</paper-item>
                         <paper-item on-tap="doLogout">Logout</paper-item>
                     </template>
                 </paper-material>
@@ -51,15 +51,17 @@
 
             <!-- todo list panel -->
             <section data-route="todos">
-                <p>this should show the todo list....</p>
+                <template is="dom-repeat" items="{{todos}}">
+                    <p>{{item.name}}</p>
+                </template>
             </section>
 
             <!-- login panel -->
             <section data-route="login">
                 <paper-input label="Email" value="{{email}}"></paper-input>
                 <paper-input label="Password" value="{{password}}"></paper-input>
-                <paper-button raised on-click="login">Login</paper-button>
-                <paper-button on-click="resetLogin">Reset</paper-button>
+                <paper-button raised on-tap="login">Login</paper-button>
+                <paper-button on-tap="resetLogin">Reset</paper-button>
             </section>
 
             <!-- about panel -->
@@ -69,9 +71,9 @@
                 <p>COP4656 Mobile Programming, Summer 2016</p>
                 <ul>
                     <li>Brian Posey</li>
-                    <li>Carrie</li>
-                    <li>David</li>
-                    <li>Erik</li>
+                    <li>Carrie Johnson</li>
+                    <li>David Hausner</li>
+                    <li>Erik Cass</li>
                 </ul>
                 <paper-button raised on-tap="cancelAbout">OK</paper-button>
             </paper-material>
@@ -92,7 +94,7 @@
                     type: String,
                     value: 'https://xspfync7pf.execute-api.us-east-1.amazonaws.com/prod/'
                 },
-                authentication: {
+                authorization: {
                     type: String,
                     value: ''
                 },
@@ -109,7 +111,8 @@
                     value: 'login'
                 },
                 user: {
-                    type: Object
+                    type: Object,
+                    value: {}
                 },
                 todos: {
                     type: Array,
@@ -119,26 +122,33 @@
             ready: function(e) {
                 //this.addEventListener('LoginSuccess', this.postLoginSetup);
             },
-            postLoginSetup: function(e) {
-                console.log('Post login setup started.');
-                this.anonymous = false;
-                this.user = e.message;
-                this.todos = [
-                  {'name': 'One'},
-                  {'name': 'Two'},
-                  {'name': 'Three'}
-                ];
-                this.showTop();
-            },
             showTop: function() {
                 if (this.anonymous) {
-                  this.route = 'login'
+                  this.showLogin();
                 } else {
-                  this.route = 'todos'
+                  this.showTodos();
                 }
             },
             showTodos: function() {
-                this.route = 'todos'
+                endpoint = this.baseUrl + 'todo';
+                console.log('showTodos: endpoint: ' + endpoint);
+
+                // make the call to the backend
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', endpoint);
+                xhr.setRequestHeader("Authorization", this.authorization);
+                console.log('showTodos: header: Authorization: ' + this.authorization);
+                xhr.onerror = function(e) {
+                    console.log('showTodos: error: ' + xhr.res);
+                    this.route = 'todos'
+                }.bind(this);
+                xhr.onload = function(e) {
+                    console.log('showTodos: success: ' + xhr.responseText);
+                    data = JSON.parse(xhr.responseText);
+                    this.todos = data['Items'];
+                    this.route = 'todos';
+                }.bind(this);
+                xhr.send();
             },
             doLogout: function(e) {
                 this.sessionId = '';
@@ -171,11 +181,13 @@
                     'password': this.password
                 };
                 json = JSON.stringify(body);
+                endpoint = this.baseUrl + 'login';
+                console.log('login: endpoint: ' + endpoint);
                 console.log('login: request: ' + json);
 
                 // make the call to the backend
                 var xhr = new XMLHttpRequest();
-                xhr.open('POST', this.baseUrl + 'login');
+                xhr.open('POST', endpoint);
                 xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
                 xhr.onerror = function(e) {
                     console.log('login: error: ' + e.message);
@@ -185,7 +197,7 @@
                     data = JSON.parse(xhr.responseText);
                     this.user = data['Items'][0];
                     this.anonymous = false;
-                    this.authentication = this.user.self;
+                    this.authorization = this.user.self;
                     this.showTop();
                 }.bind(this);
                 xhr.send(json);
