@@ -15,6 +15,7 @@
     <link href="../../bower_components/paper-tabs/paper-tabs.html" rel="import">
     <link href="../../bower_components/paper-toolbar/paper-toolbar.html" rel="import">
     <link href="../../bower_components/paper-icon-button/paper-icon-button.html" rel="import">
+    <link href="../../bower_components/paper-card/paper-card.html" rel="import">
     <link href="../../bower_components/iron-icons/iron-icons.html" rel="import">
     <link href="../../bower_components/iron-icon/iron-icon.html" rel="import">
 </head>
@@ -53,7 +54,15 @@
             <!-- todo list panel -->
             <section data-route="todos">
                 <template is="dom-repeat" items="{{todos}}">
-                    <p>{{item.name}}</p>
+                    <p on-tap="showTodo">{{item.name}}</p>
+                </template>
+            </section>
+
+            <!-- todo panel -->
+            <section data-route="todo">
+                <p>{{activeTodo.name}} <paper-button raised on-tap="deleteTodo">X</paper-button></p>
+                <template is="dom-repeat" items="{{activeTodo.tasks}}">
+                    <paper-button on-tap="show">{{item.name}}</paper-button>
                 </template>
             </section>
 
@@ -124,6 +133,9 @@
                 todos: {
                     type: Array,
                     value: []
+                },
+                activeTodo: {
+                    type: Object
                 }
             },
             ready: function(e) {
@@ -161,6 +173,10 @@
                 }.bind(this);
                 xhr.send();
             },
+            showTodo: function (e) {
+                this.activeTodo = this.todos[e.model.get('index')];
+                this.route = 'todo';
+            },
             doLogout: function(e) {
                 this.sessionId = '';
                 this.anonymous = true;
@@ -184,6 +200,23 @@
             },
             cancelAbout: function(e) {
                 this.showTop();
+            },
+            deleteTodo: function(e) {
+                // make the call to the backend
+                endpoint = this.baseUrl + this.activeTodo.self;
+                console.log('deleteTodo: endpoint: ' + endpoint);
+                var xhr = new XMLHttpRequest();
+                xhr.open('DELETE', endpoint);
+                xhr.setRequestHeader("Authorization", this.authorization);
+                console.log('deleteTodo: header: Authorization: ' + this.authorization);
+                xhr.onerror = function(e) {
+                    console.log('deleteTodo: error: ' + e.message);
+                }.bind(this);
+                xhr.onload = function(e) {
+                    console.log('deleteTodo: success: ' + xhr.responseText);
+                    this.showTop();
+                }.bind(this);
+                xhr.send();
             },
             login: function(e) {
                 // prepare the request payload
@@ -234,9 +267,6 @@
                 }.bind(this);
                 xhr.send();
             },
-            deleteTodo: function(id) {
-
-            },
             createTodo: function(e) {
                 body = {
                     'name': this.$.todoName.value
@@ -260,7 +290,7 @@
                 }.bind(this);
                 xhr.onload = function(e) {
                     console.log('createTodo: success: ' + xhr.responseText);
-                    //var data = JSON.parse(this.defunkify(xhr.responseText));
+                    //var data = JSON.parse(this.unescape(xhr.responseText));
                     var data = JSON.parse(xhr.responseText);
                     this.getTodo(data['id']);
                     this.showTop();
@@ -271,7 +301,7 @@
                 this.email = '';
                 this.password = '';
             },
-            defunkify: function(jsonString) {
+            unescape: function(jsonString) {
                 var clean = '';
                 if (jsonString.length>2) {
                     clean = jsonString.substring(1,jsonString.length-1).replace(/\\/g, '');
