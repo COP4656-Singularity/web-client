@@ -16,6 +16,7 @@
     <link href="../../bower_components/paper-toolbar/paper-toolbar.html" rel="import">
     <link href="../../bower_components/paper-icon-button/paper-icon-button.html" rel="import">
     <link href="../../bower_components/paper-card/paper-card.html" rel="import">
+    <link href="../../bower_components/paper-checkbox/paper-checkbox.html" rel="import">
     <link href="../../bower_components/iron-icons/iron-icons.html" rel="import">
     <link href="../../bower_components/iron-icon/iron-icon.html" rel="import">
 </head>
@@ -44,8 +45,8 @@
                     <template is="dom-if" if="{{!anonymous}}">
                         <paper-item on-tap="showMyDetail">{{user.firstName}} {{user.lastName}}</paper-item>
                         <paper-item on-tap="showAbout">About</paper-item>
-                        <paper-item on-tap="showTodos">Refresh</paper-item>
-                        <paper-item on-tap="showNewTodo">New...</paper-item>
+                        <paper-item on-tap="showTodos">Show Todo List</paper-item>
+                        <paper-item on-tap="showNewTodo">New Todo</paper-item>
                         <paper-item on-tap="doLogout">Logout</paper-item>
                     </template>
                 </paper-material>
@@ -60,16 +61,30 @@
 
             <!-- todo panel -->
             <section data-route="todo">
-                <p>{{activeTodo.name}} <paper-button raised on-tap="deleteTodo">X</paper-button></p>
+
+                <paper-button raised on-tap="showTop">List</paper-button>
+                <paper-button raised on-tap="deleteTodo">Delete</paper-button>
+                <paper-button raised on-tap="showNewTask">Add Task</paper-button>
+
+                <h2>{{activeTodo.name}}</h2>
                 <template is="dom-repeat" items="{{activeTodo.tasks}}">
-                    <paper-button on-tap="show">{{item.name}}</paper-button>
+                    <paper-card>
+                        <paper-checkbox checked="{{item.complete}}" on-tap="checkTask"></paper-checkbox>{{item.name}}
+                        <p>{{item.notes}}</p>
+                    </paper-card>
                 </template>
             </section>
 
             <!-- new todo panel -->
             <section data-route="newTodo">
-                <paper-input id="todoName" label="Name"></paper-input>
+                <paper-input id="todoName" label="Todo Name"></paper-input>
                 <paper-button raised on-tap="createTodo">Create</paper-button>
+            </section>
+
+            <!-- new task panel -->
+            <section data-route="newTask">
+                <paper-input id="taskName" label="Task Name"></paper-input>
+                <paper-button raised on-tap="addTask">Add Task</paper-button>
             </section>
 
             <!-- login panel -->
@@ -135,7 +150,8 @@
                     value: []
                 },
                 activeTodo: {
-                    type: Object
+                    type: Object,
+                    value: {}
                 }
             },
             ready: function(e) {
@@ -151,6 +167,10 @@
             showNewTodo: function(e) {
                 this.$.todoName.value = '';
                 this.route = 'newTodo';
+            },
+            showNewTask: function(e) {
+                this.$.taskName.value = '';
+                this.route = 'newTask';
             },
             showTodos: function() {
                 endpoint = this.baseUrl + 'todo';
@@ -218,6 +238,37 @@
                 }.bind(this);
                 xhr.send();
             },
+            addTask: function(e) {
+                var taskName = this.$.taskName.value;
+                if (!this.activeTodo.tasks) {
+                    this.activeTodo.tasks = [];
+                }
+                if (!this.activeTodo.version) {
+                    this.activeTodo.version = 1;
+                } else {
+                    this.activeTodo.version += 1;
+                }
+                this.activeTodo.tasks.push({name:taskName, completed:false});
+                json = JSON.stringify(this.activeTodo);
+                // make the call to the backend
+                endpoint = this.baseUrl + this.activeTodo.self;
+                console.log('addTask: endpoint: ' + endpoint);
+                console.log('addTask: payload: ' + json);
+                var xhr = new XMLHttpRequest();
+                xhr.open('PUT', endpoint);
+                xhr.setRequestHeader("Authorization", this.authorization);
+                console.log('addTask: header: Authorization: ' + this.authorization);
+                xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                xhr.onerror = function(e) {
+                    console.log('addTask: error: ' + e.message);
+                }.bind(this);
+                xhr.onload = function(e) {
+                    console.log('addTask: success: ' + xhr.responseText);
+                    this.showTop();
+                }.bind(this);
+                xhr.send(json);
+                //temp
+            },
             login: function(e) {
                 // prepare the request payload
                 var body = {
@@ -264,12 +315,40 @@
                 xhr.onload = function(e) {
                     data = JSON.parse(xhr.responseText);
                     console.log('getTodo: success: ' + xhr.responseText);
+                    this.activeTodo = data['Items'][0];
+                    this.route = 'todo';
                 }.bind(this);
                 xhr.send();
             },
+            checkTask: function(e) {
+                if (!this.activeTodo.version) {
+                    this.activeTodo.version = 1;
+                } else {
+                    this.activeTodo.version += 1;
+                }
+                json = JSON.stringify(this.activeTodo);
+                // make the call to the backend
+                endpoint = this.baseUrl + this.activeTodo.self;
+                console.log('checkTask: endpoint: ' + endpoint);
+                console.log('checkTask: payload: ' + json);
+                var xhr = new XMLHttpRequest();
+                xhr.open('PUT', endpoint);
+                xhr.setRequestHeader("Authorization", this.authorization);
+                console.log('checkTask: header: Authorization: ' + this.authorization);
+                xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                xhr.onerror = function(e) {
+                    console.log('checkTask: error: ' + e.message);
+                }.bind(this);
+                xhr.onload = function(e) {
+                    console.log('checkTask: success: ' + xhr.responseText);
+                    this.showTop();
+                }.bind(this);
+                xhr.send(json);
+            },
             createTodo: function(e) {
                 body = {
-                    'name': this.$.todoName.value
+                    'name': this.$.todoName.value,
+                    'version' : 1
                 };
                 json = JSON.stringify(body);
                 endpoint = this.baseUrl + 'todo';
@@ -293,7 +372,6 @@
                     //var data = JSON.parse(this.unescape(xhr.responseText));
                     var data = JSON.parse(xhr.responseText);
                     this.getTodo(data['id']);
-                    this.showTop();
                 }.bind(this);
                 xhr.send(json);
             },
